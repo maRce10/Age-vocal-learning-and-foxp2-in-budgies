@@ -1,0 +1,379 @@
+---
+title: Data analysis
+subtitle: Age, vocal learning and FoxP2 in budgerigards
+author: Marcelo Araya-Salas
+date: "`r Sys.Date()`"
+toc: true
+toc-depth: 2
+toc-location: left
+number-sections: true
+highlight-style: pygments
+format:
+  html:
+    df-print: kable
+    code-fold: true
+    code-tools: true
+    css: qmd.css
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- skyblue box -->
+<div class="alert alert-info">
+
+Data analysis for the paper:
+
+B Moussaoui, K Ulmer, M Araya-Salas, TF Wright. In review. **Persistent vocal learning in an aging open-ended learner reflected in neural FoxP2 expression**
+
+
+</div>
+
+&nbsp; 
+
+<!-- this code add line numbers to code blocks -->
+<!-- only works when code folding is not used in yaml (code_folding: show) -->
+
+```{=html}
+<style>
+body
+  { counter-reset: source-line 0; }
+pre.numberSource code
+  { counter-reset: none; }
+</style>
+```
+
+```{r set root directory, echo = FALSE}
+
+knitr::opts_knit$set(root.dir = "..")
+
+```
+
+```{r add link to github repo, echo = FALSE, results='asis'}
+
+# print link to github repo if any
+if (file.exists("./.git/config")){
+  config <- readLines("./.git/config")
+  url <- grep("url",  config, value = TRUE)
+  url <- gsub("\\turl = |.git$", "", url)
+  cat("\nSource code and data found at [", url, "](", url, ")", sep = "")
+  }
+
+```
+
+
+```{r setup style, echo = FALSE, message = FALSE, warning=FALSE}
+
+# options to customize chunk outputs
+knitr::opts_chunk$set(
+  class.source = "numberLines lineAnchors", # for code line numbers
+  tidy.opts = list(width.cutoff = 65), 
+  tidy = TRUE,
+  message = FALSE,
+  warning = FALSE
+ )
+
+```
+
+
+<!-- skyblue box -->
+<div class="alert alert-info">
+
+# Purpose
+
+- Testing for correlation between vocal measures and FoxP2 MMST/VSP Protein Expression and Expression Difference with Age
+
+</div>
+
+&nbsp;
+
+# Load packages
+
+```{r load packages}
+
+# knitr is require for creating html/pdf/word reports
+# load function from sketchy
+source("https://raw.githubusercontent.com/maRce10/sketchy/main/R/load_packages.R")
+
+# install/ load packages
+load_packages(packages = c("ggplot2", "tidyverse", "cowplot", "pwr", "brms", "viridis"))
+
+my.viridis <- function(...) viridis(alpha = 0.5, begin = 0.3, end = 0.7,
+    ...)
+
+source("https://raw.githubusercontent.com/maRce10/brmsish/master/R/extended_summary.R")
+source("https://raw.githubusercontent.com/maRce10/brmsish/master/R/helpers.R")
+source("https://raw.githubusercontent.com/maRce10/brmsish/master/R/check_rds_fits.R")
+
+```
+
+
+# Load data
+
+```{r}
+voc_brain_corr <- read.csv("./data/raw/Vocal_Brain_Corr_03_09_2023_Final.csv", header = TRUE)
+head(voc_brain_corr)
+
+```
+
+We can take 1 - acoustic.overlap, acoustic.overlap being calculated as the intersect over union of an individual’s beginning and ending acoustic spaces, to be able to represent vocal plasticity such that higher values representing a more plastic vocal repertoire.
+    
+    - vocal.plasticity = (1-acoustic.overlap)
+
+```{r}
+
+voc_brain_corr$vocal.plasticity <- (1 - (voc_brain_corr$acoustic.overlap))
+
+```
+
+# Exploratory graphs
+
+```{r}
+
+voc_brain_corr$treatment <-
+    factor(voc_brain_corr$treatment, levels = c("Young", "Old"))
+
+#Visualize data
+theme_set(theme_classic())
+area.change <- ggplot(voc_brain_corr,
+                      aes(x = mmst.vsp,
+                          y = acoustic.area, colour = treatment)) +
+    geom_point(size = 6) + geom_smooth(method = "lm", se = FALSE, size = 1.5) + labs(y = "Vocal diversity", x = "FoxP2 MMSt/VSP expression", color = "Adult age") +  theme(
+        text = element_text(size = 20),
+        axis.line = element_line(colour = 'black', size = 1.5),
+        axis.ticks = element_line(colour = "black", size = 1.5),
+        axis.text = element_text(colour = "black")
+    ) + scale_color_viridis_d(begin = 0.2, end = 0.8, alpha = 0.5)  + coord_cartesian(xlim = c(0.25, 1.25))
+area.change
+
+ggsave(
+    "./output/FOXP2_VocalDiversity_Correlation_Final_03_09_2023.png",
+    width = 7,
+    height = 6,
+    units = "in"
+)
+
+overlap.self <-
+    ggplot(voc_brain_corr,
+           aes(x = mmst.vsp, y = vocal.plasticity, colour = treatment)) +
+    geom_point(size = 6) + geom_smooth(method = "lm", se = FALSE, size = 1.5) + labs(y = "Vocal plasticity", x = "FoxP2 MMSt/VSP expression", color = "Adult age") +  theme(
+        text = element_text(size = 20),
+        axis.line = element_line(colour = 'black', size = 1.5),
+        axis.ticks = element_line(colour = "black", size = 1.5),
+        axis.text = element_text(colour = "black")
+    ) + scale_color_viridis_d(begin = 0.2, end = 0.8, alpha = 0.5)  + coord_cartesian(xlim = c(0.25, 1.25), ylim = c(0, 1))
+overlap.self 
+
+ggsave(
+    "./output/FOXP2_VocalPlasticity_Correlation_Final__03_09_2023.png",
+    width = 7,
+    height = 6,
+    units = "in"
+)
+
+overlap.group <- ggplot(voc_brain_corr,
+                        aes(x = mmst.vsp,
+                            y = acoustic.overlap.to.group,
+                            colour = treatment)) +
+    geom_point(size = 6) + geom_smooth(method = "lm", se = FALSE, size = 1.5) + labs(y = "Vocal convergence", x = "FoxP2 MMSt/VSP expression", color = "Adult age") +  theme(
+        text = element_text(size = 20),
+        axis.line = element_line(colour = 'black', size = 1.5),
+        axis.ticks = element_line(colour = "black", size = 1.5),
+        axis.text = element_text(colour = "black")
+    ) + scale_color_viridis_d(begin = 0.2, end = 0.8, alpha = 0.5)  + coord_cartesian(xlim = c(0.25, 1.25), ylim = c(0, 1))
+overlap.group
+
+ggsave(
+    "./output/FOXP2_VocalConvergence_Correlation_Final__03_03_2023.png",
+    width = 7,
+    height = 6,
+    units = "in"
+)
+
+```
+
+
+# Statistical analysis
+
+## Models without age as a predictor
+
+### Fit models 
+```{r, eval = FALSE}
+
+iter <- 20000
+chains <- 4
+priors <- c(prior(normal(0, 6), class = "b"))
+
+# mean center expression
+voc_brain_corr$mmst.vsp_cntr <- voc_brain_corr$mmst.vsp - mean(voc_brain_corr$mmst.vsp)
+
+
+# cmdstanr::set_cmdstan_path('~/Documentos/cmdstan/')
+
+# to run within-chain parallelization
+model.01 <- brm(formula = acoustic.area ~ mmst.vsp_cntr, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains,
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_acoustic_area_by_expression.RDS",
+    file_refit = "always")
+
+model.02 <- brm(formula = vocal.plasticity ~ mmst.vsp_cntr, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains, family = Beta(),
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_vocal_plasticity_by_expression.RDS",
+    file_refit = "always")
+
+model.03 <- brm(formula = acoustic.overlap.to.group ~ mmst.vsp_cntr, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains, family = Beta(),
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_vocal_overlap_to_group_by_expression.RDS",
+    file_refit = "always")
+
+```
+
+### Change in acoustic area (diversity)
+```{r, results='asis', fig.height=3}
+mod <- readRDS("./data/processed/regression_model_acoustic_area_by_expression.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+
+### Overlap of acoustic area to self (plasticity) 
+```{r, results='asis', fig.height=3}
+
+mod <- readRDS("./data/processed/regression_model_vocal_plasticity_by_expression.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+### Overlap to group acoustic area (convergence) 
+```{r, results='asis', fig.height=3}
+
+mod <- readRDS("./data/processed/regression_model_vocal_overlap_to_group_by_expression.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+
+## Models with foxp2 expression & age as predictors
+
+### Fit models
+```{r, eval = FALSE}
+
+# to run within-chain parallelization
+model.01 <- brm(formula = acoustic.area ~ mmst.vsp_cntr * treatment, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains,
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_acoustic_area_by_expression_and_treatment.RDS",
+    file_refit = "always")
+
+model.02 <- brm(formula = vocal.plasticity ~ mmst.vsp_cntr * treatment, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains, family = Beta(),
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_vocal_plasticity_by_expression_and_treatment.RDS",
+    file_refit = "always")
+
+model.03 <- brm(formula = acoustic.overlap.to.group ~ mmst.vsp_cntr * treatment, data = voc_brain_corr,
+    prior = priors, iter = iter, chains = chains, cores = chains, family = Beta(),
+    control = list(adapt_delta = 0.99, max_treedepth = 15), file = "./data/processed/regression_model_vocal_overlap_to_group_by_expression_and_treatment.RDS",
+    file_refit = "always")
+
+
+```
+
+### Change in acoustic area (diversity)
+```{r, results='asis', fig.height=3}
+mod <- readRDS("./data/processed/regression_model_acoustic_area_by_expression_and_treatment.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+
+### Overlap of acoustic area to self (plasticity) 
+```{r, results='asis', fig.height=3}
+
+mod <- readRDS("./data/processed/regression_model_vocal_plasticity_by_expression_and_treatment.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+### Overlap to group acoustic area (convergence) 
+```{r, results='asis', fig.height=3}
+
+mod <- readRDS("./data/processed/regression_model_vocal_overlap_to_group_by_expression_and_treatment.RDS")
+
+extended_summary(mod, n.posterior = 1000, fill = viridis(10)[7], trace.palette = my.viridis,
+    remove.intercepts = TRUE, highlight = TRUE, print.name = FALSE)
+
+```
+
+## Combined model metadata
+
+```{r, results='asis'}
+check_rds_fits(path = "./data/processed/", html = TRUE)
+```
+
+<div class="alert alert-success">
+
+# Takeaways {.unnumbered .unlisted}
+
+- Lower diversity in old birds
+</div>
+
+&nbsp;
+
+<!-- '---' adds a gray vertical line -->
+
+---
+
+## Posterior predictive checks
+
+Check reilability of Bayesian models 
+```{r, results='asis'}
+model_list <- c(divergence = "./data/processed/regression_model_acoustic_area_by_expression.RDS",
+    plasticity = "./data/processed/regression_model_vocal_plasticity_by_expression.RDS",
+    convergence = "./data/processed/regression_model_vocal_overlap_to_group_by_expression.RDS",
+    divergence_interaction = "./data/processed/regression_model_acoustic_area_by_expression_and_treatment.RDS",
+    plasticity_interaction = "./data/processed/regression_model_vocal_plasticity_by_expression_and_treatment.RDS",
+    convergence_interaction = "./data/processed/regression_model_vocal_overlap_to_group_by_expression_and_treatment.RDS")
+
+ndraws <- 20
+
+for (i in seq_len(length(model_list))) {
+    cat("\n\n## ", names(model_list)[i], "\n\n")
+
+    fit <- readRDS(model_list[[i]])
+    ppc_dens <- pp_check(fit, ndraws = ndraws, type = "dens_overlay")  # shows dens_overlay plot by default
+    pp_mean <- pp_check(fit, type = "stat", stat = "mean", ndraws = ndraws)
+    pp_scat <- pp_check(fit, type = "scatter_avg", ndraws = ndraws)
+    pp_stat2 <- pp_check(fit, type = "stat_2d", ndraws = ndraws)
+    pp_loo <- pp_check(fit, type = "loo_pit_qq", ndraws = ndraws)
+    pp_error <- pp_check(fit, type = "error_scatter_avg", ndraws = ndraws)
+    plot_l <- list(ppc_dens, pp_mean, pp_scat, pp_error, pp_stat2,
+        pp_loo)
+
+    plot_l <- lapply(plot_l, function(x) x + scale_color_viridis_d(begin = 0.1,
+        end = 0.8, alpha = 0.5) + scale_fill_viridis_d(begin = 0.1,
+        end = 0.8, alpha = 0.5) + theme_classic())
+
+    print(plot_grid(plotlist = plot_l, ncol = 2))
+}
+```
+
+
+&nbsp; 
+ 
+ <!-- add packages used, system details and versions  -->
+ 
+<font size="4">Session information</font>
+
+```{r session info, echo=F}
+
+sessionInfo()
+
+```
