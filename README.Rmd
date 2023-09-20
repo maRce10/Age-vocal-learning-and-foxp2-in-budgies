@@ -1,6 +1,6 @@
 ---
 title: Age, vocal learning and foxp2 in budgies
-author: AUTOR NAME
+author: Marcelo Araya Salas
 output: github_document
 date: "`r Sys.Date()`"
 editor_options:
@@ -8,7 +8,9 @@ editor_options:
 ---
 
 <!-- Short Description  -->
-This is a short description of the project
+Data analysis for the paper:
+
+B Moussaoui, K Ulmer, M Araya-Salas, TF Wright. In review. **Persistent vocal learning in an aging open-ended learner reflected in neural FoxP2 expression**
 
 *Updated on `r Sys.time()`*
 
@@ -33,22 +35,15 @@ knitr::opts_chunk$set(
 
 ## General info
 
-General information about the project (study system, goals, etc)
+- Testing associations between vocal measures and FoxP2 MMST/VSP Protein Expression and Expression Difference with Age
 
 ## Analysis
 
-* Analysis 1
+* [Data analysis](https://rpubs.com/marcelo-araya-salas/1086095)
 
-## In progress
-
-*  Something not finished yet
-
-## To-do list
-
-* Do the next analysis
 
 ## Status
 Project is: _in progress_
 
 ## Contact
-Created by [Autor name](website_URL)
+Created by [Marcelo Araya-Salas](marce10.github.io/)
