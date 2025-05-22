@@ -33,7 +33,7 @@ expression**
 
 ## Status
 
-Project is: *in progress*
+Project is: *published*
 
 ## Contact
 
